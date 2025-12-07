@@ -1,0 +1,142 @@
+
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Secure Terminal</title>
+<style>
+  :root { --bg:#0a0f0a; --fg:#b6f7b6; --accent:#2af02a; --error:#ff4d4d; }
+  html,body { background:var(--bg); color:var(--fg); margin:0; font-family:Consolas, monospace; }
+  .screen { max-width:900px; margin:0 auto; padding:16px; }
+  .line { white-space:pre-wrap; }
+  .cursor { display:inline-block; width:10px; background:var(--accent); height:1em; animation:blink 1s steps(1,start) infinite; vertical-align:text-bottom; }
+  @keyframes blink { 50% { opacity:0; } }
+  .input-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
+  .prompt { color:var(--accent); }
+  input { background:#0e120e; border:1px solid #214621; color:var(--fg); padding:8px 10px; font:inherit; flex:1; }
+  button { background:#183c18; color:var(--fg); border:1px solid #2b6c2b; padding:8px 12px; font:inherit; cursor:pointer; }
+  .error { color:var(--error); }
+  .muted { opacity:.8; }
+</style>
+</head>
+<body>
+  <div class="screen">
+    <div id="output" aria-live="polite"></div>
+    <div id="inputs"></div>
+  </div>
+
+<script>
+  // ---- Pas deze waarden aan naar jouw geheimen ----
+  const VALID = {
+    naamExact: "Yannis",             // exacte match (optioneel)
+    naamAllowList: ["Yannis","Yan"], // of een lijst die je goedkeurt (optioneel)
+    codeExact: "SANTA-2025",         // exacte geheime code
+    // of regex: bv. 4 cijfers: /^\d{4}$/ (gebruik dan codeRegex)
+    codeRegex: null
+  };
+
+  const output = document.getElementById('output');
+  const inputs = document.getElementById('inputs');
+  const state = { naam:null, code:null };
+
+  // Util: typewriter effect
+  async function typeLine(text, cls="line", speedMin=15, speedRand=30) {
+    const line = document.createElement('div'); line.className = cls;
+    output.appendChild(line);
+    const content = typeof text === "function" ? text(state) : String(text);
+    let i=0;
+    return new Promise(resolve=>{
+      const cursor=document.createElement('span'); cursor.className='cursor'; line.appendChild(cursor);
+      (function tick(){
+        if(i<content.length){ cursor.insertAdjacentText('beforebegin', content[i++]); setTimeout(tick, Math.random()*speedRand+speedMin); }
+        else { cursor.remove(); resolve(); }
+      })();
+    });
+  }
+
+  // Input met knop
+  function askInput({id,label,type="text",placeholder="",button="OK"}) {
+    return new Promise(resolve=>{
+      const row=document.createElement('div'); row.className='input-row';
+      const prompt=document.createElement('span'); prompt.className='prompt'; prompt.textContent=`> ${label}:`;
+      const field=document.createElement('input'); field.type=type; field.placeholder=placeholder;
+      const btn=document.createElement('button'); btn.textContent=button;
+      row.append(prompt, field, btn);
+      inputs.appendChild(row);
+      field.focus();
+
+      const finish=()=>{
+        const val=field.value.trim();
+        if(!val) return; // leeg? blijf staan
+        // echo naar output (masker wachtwoord)
+        const echo=document.createElement('div'); echo.className='line muted';
+        echo.textContent = `> ${label} = ${type==='password' ? '****' : val}`;
+        output.appendChild(echo);
+        inputs.removeChild(row);
+        resolve(val);
+      };
+      btn.addEventListener('click', finish);
+      field.addEventListener('keydown', e=>{ if(e.key==='Enter') finish(); });
+    });
+  }
+
+  // Foutmelding helper
+  async function showError(msg) {
+    await typeLine(`ERROR: ${msg}`, "line error");
+  }
+
+  // Validatie helpers
+  function isValidName(name) {
+    if (!name) return false;
+    const n = name.trim();
+    // 1) allow-list (case-insensitief)
+    if (Array.isArray(VALID.naamAllowList)) {
+      const ok = VALID.naamAllowList.some(v => v.toLowerCase() === n.toLowerCase());
+      if (ok) return true;
+    }
+    // 2) exacte match (optioneel)
+    if (VALID.naamExact) return n === VALID.naamExact;
+    return false;
+  }
+
+  function isValidCode(code) {
+    if (!code) return false;
+    if (VALID.codeRegex instanceof RegExp) return VALID.codeRegex.test(code);
+    if (VALID.codeExact) return code === VALID.codeExact;
+    return false;
+  }
+
+  // Flow
+  (async function run(){
+    await typeLine("Boot sequence initiated...");
+    await typeLine("Loading modules: [core] [net] [ui] [crypto]");
+    await typeLine("Welkom Agent. 🎄");
+    await typeLine("Voer je naam in om door te gaan.");
+
+    // Naam + herproberen tot juist
+    while (true) {
+      const naam = await askInput({ id:"naam", label:"naam", placeholder:"Jouw naam" });
+      if (isValidName(naam)) { state.naam = naam; break; }
+      await showError("Onbekende agentnaam. Toegang geweigerd.");
+      await typeLine("Probeer opnieuw: juiste naam vereist.");
+    }
+
+    await typeLine("Identiteit geverifieerd. ✅");
+    await typeLine("Voer de geheime code in die bij je cadeau hoort.");
+
+    // Code + herproberen tot juist
+    while (true) {
+      const code = await askInput({ id:"code", label:"code", type:"password", placeholder:"****", button:"Valideer" });
+      if (isValidCode(code)) { state.code = code; break; }
+      await showError("Ongeldige of verlopen code.");
+      await typeLine("Hint: check het label op je pakje. Probeer opnieuw.");
+    }
+
+    await typeLine("Toegang verleend. 🎁");
+    await typeLine( s => `Agent ${s.naam}, je cadeau wacht op je. Code: ${s.code}.`);
+    await typeLine("Volg de instructies op het pakje. Veel plezier!");
+  })();
+</script>
+</body>
+</html>
