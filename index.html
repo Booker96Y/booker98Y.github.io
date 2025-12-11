@@ -15,12 +15,21 @@
     }
     html, body { height: 100%; background: var(--bg); color: var(--fg); margin: 0; }
     body { font-family: "Consolas","Courier New",monospace; }
+
     .screen {
       max-width: 900px; margin: 0 auto; padding: 16px;
       box-sizing: border-box; min-height: 100%;
     }
     .title { color: var(--accent); letter-spacing: 0.1em; margin-bottom: 8px; }
     .bar { height: 1px; background: var(--accent); opacity: .4; margin: 8px 0 16px; }
+
+    /* Zorg voor scrollbaar output-venster */
+    #output {
+      max-height: 70vh;           /* pas aan naar wens */
+      overflow-y: auto;           /* verticale scroll */
+      padding-right: 6px;         /* kleine ruimte naast scrollbar */
+    }
+
     .line { white-space: pre-wrap; }
     .cursor {
       display: inline-block; width: 10px; background: var(--accent);
@@ -28,8 +37,10 @@
       margin-left: 4px; height: 1em; vertical-align: text-bottom;
     }
     @keyframes blink { 50% { opacity: 0; } }
+
     .input-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
     .prompt { color: var(--accent); }
+
     input[type="text"], input[type="password"] {
       background: #0e120e; border: 1px solid #214621; color: var(--fg);
       padding: 8px 10px; font: inherit; width: 100%;
@@ -42,6 +53,7 @@
     button:hover { filter: brightness(1.1); }
     .muted { color: var(--muted); }
     .error { color: var(--error); }
+
     .progress {
       width: 100%; height: 10px; background: #0e120e; border: 1px solid #214621; margin: 8px 0 12px;
       position: relative;
@@ -51,6 +63,8 @@
       transition: width .5s ease;
     }
     .scan-label { font-size: 0.9em; color: var(--muted); margin-top: -4px; margin-bottom: 8px; }
+
+    /* Matrix-rain header (optioneel flair) */
     canvas { display: block; width: 100%; height: 120px; background: transparent; margin-bottom: 8px; }
 
     /* --- Terminal einde effects --- */
@@ -92,7 +106,7 @@
 <body>
   <div class="screen" id="screen">
     <canvas id="matrix"></canvas>
-    <div class="title">[ ACCESS PORT : COM-TERM v2.9 ]</div>
+    <div class="title">[ ACCESS PORT : COM-TERM v4.9 ]</div>
     <div class="bar"></div>
     <div id="output" aria-live="polite"></div>
     <div id="inputs"></div>
@@ -113,7 +127,7 @@
     const VALID = {
       naamAllowList: ["Brenda"],
       // codeExact: "1204",
-      codeRegex: /^\d{4}$/
+      codeRegex: /^\d{4}$/ // voorbeeld: 4 cijfers
     };
 
     function finalMessage(state) {
@@ -144,9 +158,13 @@ Fijne feestdagen! 🎄`;
         (function tick() {
           if (i < content.length) {
             cursor.insertAdjacentText('beforebegin', content[i++]);
+            /* >>> Auto-scroll terwijl er getypt wordt */
+            output.scrollTop = output.scrollHeight;
             setTimeout(tick, Math.random()*speedRand + speedMin);
           } else {
             cursor.remove();
+            /* >>> Extra safeguard: scroll na volledige regel */
+            output.scrollTop = output.scrollHeight;
             resolve();
           }
         })();
@@ -165,12 +183,18 @@ Fijne feestdagen! 🎄`;
         output.appendChild(l);
       }
 
+      // Scroll na toevoegen van progress/label, zodat hij in beeld komt
+      output.scrollTop = output.scrollHeight;
+
       let val = 0;
       const id = setInterval(() => {
         val = Math.min(100, val + Math.random()*20 + 10);
         s.style.width = val + "%";
+        // Tijdens progress ook een lichte auto-scroll, mocht de gebruiker al scrolled zijn
+        output.scrollTop = output.scrollHeight;
         if (val >= 100) clearInterval(id);
       }, 300);
+      // Houd de progress ~2.2s bezig
       return new Promise(res => setTimeout(res, 2200));
     }
 
@@ -184,12 +208,17 @@ Fijne feestdagen! 🎄`;
         inputs.appendChild(row);
         field.focus();
 
+        // Zorg dat nieuwe input ook in beeld komt
+        output.scrollTop = output.scrollHeight;
+
         const finish = () => {
           const val = field.value.trim();
           if (!val) return;
           const echo = document.createElement('div'); echo.className = 'line muted';
           echo.textContent = `> ${cfg.label} = ${cfg.type === 'password' ? '****' : val}`;
           output.appendChild(echo);
+          // Scroll zodat de echo zichtbaar is
+          output.scrollTop = output.scrollHeight;
           inputs.removeChild(row);
           resolve(val);
         };
@@ -200,6 +229,7 @@ Fijne feestdagen! 🎄`;
 
     async function showError(msg) {
       await typeLine(`ERROR: ${msg}`, "line error");
+      output.scrollTop = output.scrollHeight;
     }
 
     function isValidName(name) {
@@ -230,14 +260,17 @@ Fijne feestdagen! 🎄`;
       await typeLine("Establishing secure channel...");
       await typeLine("Channel established (PC-Sint-Laurens)");
 
+      // Scan 1: QR payload
       await typeLine("Scanning QR payload...");
       await addProgress("Verifieert QR‑gegevens en checksum");
       await typeLine("Payload verified.");
 
+      // Scan 2: Omgevingsscan
       await typeLine("Running environment diagnostics...");
       await addProgress("Controleert apparaat, klok, weergave, netwerk");
       await typeLine("Environment stable.");
 
+      // Scan 3: Parcel manifest
       await typeLine("Decrypting parcel manifest...");
       await addProgress("Zoekt naar kerstgevoel…");
       await typeLine("Kerstgevoel gevonden.");
@@ -245,6 +278,7 @@ Fijne feestdagen! 🎄`;
       await typeLine("Welkom Agent. 🎄");
       await typeLine("Voer je naam in om door te gaan.");
 
+      // NAAM (moet Brenda zijn)
       while (true) {
         const naam = await askInput({ id: "naam", label: "naam", type: "text", placeholder: "Jouw naam", button: "Verder" });
         if (isValidName(naam)) { state.naam = naam; break; }
@@ -254,10 +288,12 @@ Fijne feestdagen! 🎄`;
 
       await typeLine("Identiteit geverifieerd. ✅");
 
+      // Extra scan na identity (voor effect)
       await typeLine("Linking identity to parcel manifest…");
       await addProgress("Controleert of je wel braaf bent geweest…");
       await typeLine("Goedgekeurd.");
 
+      // CODE
       await typeLine("Voer de geheime code in die bij je hint hoort.");
       let attempts = 0, MAX_ATTEMPTS = 3;
       while (true) {
@@ -273,6 +309,7 @@ Fijne feestdagen! 🎄`;
         await typeLine("Hint: check je QR code en probeer opnieuw.");
       }
 
+      // Laatste verificatie-scan
       await typeLine("Final authorization checks…");
       await addProgress("Bevestigt code, agent‑ID en item‑locatie");
       await typeLine("Authorization success.");
@@ -284,9 +321,11 @@ Fijne feestdagen! 🎄`;
       await addProgress("GPS signaal decoderen");
       await typeLine("Pakket gevonden");
 
+      // EIND
       await typeLine(finalMessage);
       await typeLine("Missie geslaagd!");
 
+      // VISUEEL EINDE
       await endSequence();
     }
 
@@ -351,7 +390,7 @@ Fijne feestdagen! 🎄`;
       if (!overlay) return;
       overlay.style.display = "block";
       overlay.classList.add("crt-scanlines");
-      // (optioneel) nettere toggle via klasse i.p.v. style inject:
+      // (simpel: toggle opacity via style inject)
       const style = document.createElement("style");
       style.textContent = `#crtOverlay.crt-scanlines::before { opacity: ${on ? "0.24" : "0"}; }`;
       document.head.appendChild(style);
@@ -364,6 +403,7 @@ Fijne feestdagen! 🎄`;
       setTimeout(() => flash.style.opacity = "0", 120);
     }
 
+    // Lichtgewicht confetti/partikel regen (canvas)
     function startConfetti(durationMs = 3000) {
       const canvas = document.getElementById("confettiCanvas");
       const ctx = canvas.getContext("2d");
@@ -376,7 +416,7 @@ Fijne feestdagen! 🎄`;
       window.addEventListener("resize", resize);
       resize();
 
-      const N = Math.min(160, Math.floor(W * H / 35000));
+      const N = Math.min(160, Math.floor(W * H / 35000)); // schaal met scherm
       const parts = Array.from({ length: N }, () => spawn());
 
       function color() {
@@ -448,13 +488,22 @@ Fijne feestdagen! 🎄`;
     }
 
     async function endSequence() {
+      // 1) ASCII banner in de output
       await typeLine("\n" + asciiBanner(), "line");
+
+      // 2) korte “CRT flash” + scanlines overlay
       showScanlines(true);
       screenFlash();
+
+      // 3) confetti (groen)
       startConfetti(3000);
+
+      // 4) kleine extra regels voor sfeer
       await typeLine("Compiling cheer modules... [OK]");
       await typeLine("Sealing channel... [OK]");
       await typeLine("Writing gift ledger... [OK]");
+
+      // 5) fade naar “SESSION CLOSED”
       fadeToClosed("> SESSION CLOSED ");
     }
 
