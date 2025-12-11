@@ -73,13 +73,13 @@
       naamAllowList: ["Brenda"],
       // Eventueel kun je i.p.v. exact één naam ook meerdere varianten toelaten:
       // naamAllowList: ["Brenda", "Bren", "B."]
-      codeExact: "SANTA-2025",    // <-- pas aan of gebruik codeRegex
-      codeRegex: null             // voorbeeld: /^\d{4}$/ voor 4 cijfers
+      codeExact: codeRegex// <-- pas aan of gebruik codeRegex
+      codeRegex: 1204          // voorbeeld: /^\d{4}$/ voor 4 cijfers
     };
 
     // Je eindboodschap personaliseren:
     function finalMessage(state) {
-      return `Hey ${state.naam}, jouw cadeau ligt onder de boom, derde van links. 
+      return `Hey ${state.naam}, Els bewaakt jouw pakje. Zoek onder de boom. 
 Scan afgerond met code: ${state.code}. 
 Fijne feestdagen! 🎄`;
     }
@@ -239,7 +239,7 @@ Fijne feestdagen! 🎄`;
           await typeLine("Neem contact op met de Kerst‑Operaties.");
           return;
         }
-        await typeLine("Hint: check het label op je pakje en probeer opnieuw.");
+        await typeLine("Hint: check je QR code en probeer opnieuw.");
       }
 
       // Laatste verificatie-scan
@@ -247,10 +247,17 @@ Fijne feestdagen! 🎄`;
       await addProgress("Bevestigt code, agent‑ID en item‑locatie");
       await typeLine("Authorization success.");
 
-      // EIND
       await typeLine("Toegang verleend. 🎁");
+
+      await typeLine("Pakket locatie verifieëren");
+      await addProgress("Pakket geo-locatie opvragen");
+      await addProgress("GPS signaal decoderen");
+      await typeLine("Pakket gevonden");
+
+      // EIND
+      
       await typeLine(finalMessage);
-      await typeLine("Sluit dit scherm niet. Volg de instructies op het pakje. Veel plezier!");
+      await typeLine("Mission succes!");
     }
 
     // ==========================
@@ -296,5 +303,6 @@ Fijne feestdagen! 🎄`;
   </script>
 </body>
 </html>
+
 
 
