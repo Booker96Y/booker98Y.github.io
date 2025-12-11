@@ -92,7 +92,7 @@
 <body>
   <div class="screen" id="screen">
     <canvas id="matrix"></canvas>
-    <div class="title">[ ACCESS PORT : COM-TERM v1.9 ]</div>
+    <div class="title">[ ACCESS PORT : COM-TERM v2.9 ]</div>
     <div class="bar"></div>
     <div id="output" aria-live="polite"></div>
     <div id="inputs"></div>
@@ -215,3 +215,251 @@ Fijne feestdagen! 🎄`;
       if (!code) return false;
       if (VALID.codeRegex instanceof RegExp) return VALID.codeRegex.test(code);
       if (VALID.codeExact) return code === VALID.codeExact;
+      return false;
+    }
+
+    // ==========================
+    //  SCRIPT – LANGE VERSIE MET “SCANS”
+    // ==========================
+    async function runScript() {
+      await typeLine("Boot sequence initiated...");
+      await typeLine("loading version 1.2.1...");
+      await typeLine("Loading modules: [core] [net] [ui] [santa] [cheer]");
+      await typeLine("Performing integrity check...");
+      await typeLine(":: OK");
+      await typeLine("Establishing secure channel...");
+      await typeLine("Channel established (PC-Sint-Laurens)");
+
+      await typeLine("Scanning QR payload...");
+      await addProgress("Verifieert QR‑gegevens en checksum");
+      await typeLine("Payload verified.");
+
+      await typeLine("Running environment diagnostics...");
+      await addProgress("Controleert apparaat, klok, weergave, netwerk");
+      await typeLine("Environment stable.");
+
+      await typeLine("Decrypting parcel manifest...");
+      await addProgress("Zoekt naar kerstgevoel…");
+      await typeLine("Kerstgevoel gevonden.");
+
+      await typeLine("Welkom Agent. 🎄");
+      await typeLine("Voer je naam in om door te gaan.");
+
+      while (true) {
+        const naam = await askInput({ id: "naam", label: "naam", type: "text", placeholder: "Jouw naam", button: "Verder" });
+        if (isValidName(naam)) { state.naam = naam; break; }
+        await showError("Onbekende agentnaam. Toegang geweigerd.");
+        await typeLine("Probeer opnieuw: juiste naam vereist (tip: check je label).");
+      }
+
+      await typeLine("Identiteit geverifieerd. ✅");
+
+      await typeLine("Linking identity to parcel manifest…");
+      await addProgress("Controleert of je wel braaf bent geweest…");
+      await typeLine("Goedgekeurd.");
+
+      await typeLine("Voer de geheime code in die bij je hint hoort.");
+      let attempts = 0, MAX_ATTEMPTS = 3;
+      while (true) {
+        const code = await askInput({ id: "code", label: "code", type: "password", placeholder: "****", button: "Valideer" });
+        if (isValidCode(code)) { state.code = code; break; }
+        attempts++;
+        await showError(`Ongeldige of verlopen code. Poging ${attempts}/${MAX_ATTEMPTS}.`);
+        if (attempts >= MAX_ATTEMPTS) {
+          await typeLine("Sessie vergrendeld wegens te veel foute pogingen. 🔒");
+          await typeLine("Neem contact op met de Kerst‑Operaties.");
+          return;
+        }
+        await typeLine("Hint: check je QR code en probeer opnieuw.");
+      }
+
+      await typeLine("Final authorization checks…");
+      await addProgress("Bevestigt code, agent‑ID en item‑locatie");
+      await typeLine("Authorization success.");
+
+      await typeLine("Toegang verleend. 🎁");
+
+      await typeLine("Pakket locatie verifiëren");
+      await addProgress("Pakket geo-locatie opvragen");
+      await addProgress("GPS signaal decoderen");
+      await typeLine("Pakket gevonden");
+
+      await typeLine(finalMessage);
+      await typeLine("Missie geslaagd!");
+
+      await endSequence();
+    }
+
+    // ==========================
+    //  MATRIX RAIN (FLAIR) — met resize fix
+    // ==========================
+    function matrixRain() {
+      const canvas = document.getElementById('matrix');
+      const ctx = canvas.getContext('2d');
+      const letters = "01$#@*";
+      const fontSize = 16;
+      let columns = 0;
+      let drops = [];
+
+      const resize = () => {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(1);
+      };
+      window.addEventListener('resize', resize);
+      resize();
+
+      function draw() {
+        ctx.fillStyle = "rgba(10, 15, 10, 0.08)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = getComputedStyle(document.documentElement)
+          .getPropertyValue('--accent');
+        ctx.font = fontSize + "px Consolas";
+        for (let i = 0; i < drops.length; i++) {
+          const text = letters[Math.floor(Math.random() * letters.length)];
+          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    // ===============
+    //  EINDE EFFECT
+    // ===============
+    function asciiBanner() {
+      return `
+              *
+             /.\"
+            /..'\"
+            /'.'\"
+           /.''.'\"
+           /.'.'.\"
+    ....../'.''.'.\\.........
+          ^^^[_]^^^
+`;
+    }
+
+    function showScanlines(on) {
+      const overlay = document.getElementById("crtOverlay");
+      if (!overlay) return;
+      overlay.style.display = "block";
+      overlay.classList.add("crt-scanlines");
+      // (optioneel) nettere toggle via klasse i.p.v. style inject:
+      const style = document.createElement("style");
+      style.textContent = `#crtOverlay.crt-scanlines::before { opacity: ${on ? "0.24" : "0"}; }`;
+      document.head.appendChild(style);
+    }
+
+    function screenFlash() {
+      const flash = document.getElementById("flash");
+      if (!flash) return;
+      flash.style.opacity = "1";
+      setTimeout(() => flash.style.opacity = "0", 120);
+    }
+
+    function startConfetti(durationMs = 3000) {
+      const canvas = document.getElementById("confettiCanvas");
+      const ctx = canvas.getContext("2d");
+      let W, H, rafId, startTs;
+
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      const N = Math.min(160, Math.floor(W * H / 35000));
+      const parts = Array.from({ length: N }, () => spawn());
+
+      function color() {
+        const greens = ["#2af02a", "#b6f7b6", "#64ff64", "#1ed760"];
+        return greens[Math.floor(Math.random() * greens.length)];
+      }
+      function spawn() {
+        return {
+          x: Math.random() * W,
+          y: -20 - Math.random() * 100,
+          r: 2 + Math.random() * 3,
+          vy: 1.2 + Math.random() * 2.5,
+          vx: (Math.random() - 0.5) * 0.8,
+          a: Math.random() * Math.PI,
+          spin: (Math.random() - 0.5) * 0.2,
+          c: color(),
+          life: 0
+        };
+      }
+
+      function step(ts) {
+        if (!startTs) startTs = ts;
+        const elapsed = ts - startTs;
+
+        ctx.clearRect(0, 0, W, H);
+        for (let p of parts) {
+          p.a += p.spin;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life += 16;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.a);
+          ctx.fillStyle = p.c;
+          ctx.globalAlpha = 0.9;
+          ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2.6);
+          ctx.restore();
+
+          if (p.y > H + 30) {
+            Object.assign(p, spawn(), { y: -20 });
+          }
+        }
+
+        if (elapsed < durationMs) {
+          rafId = requestAnimationFrame(step);
+        } else {
+          ctx.clearRect(0, 0, W, H);
+          cancelAnimationFrame(rafId);
+        }
+      }
+
+      rafId = requestAnimationFrame(step);
+    }
+
+    function fadeToClosed(text = "> SESSION CLOSED ") {
+      const fade = document.getElementById("fade");
+      const closed = document.getElementById("closedText");
+      if (!fade || !closed) return;
+
+      closed.textContent = text;
+      closed.classList.add("blink-cursor");
+      closed.style.opacity = "0";
+
+      requestAnimationFrame(() => {
+        fade.style.opacity = "0.88";
+        setTimeout(() => { closed.style.opacity = "1"; }, 600);
+      });
+    }
+
+    async function endSequence() {
+      await typeLine("\n" + asciiBanner(), "line");
+      showScanlines(true);
+      screenFlash();
+      startConfetti(3000);
+      await typeLine("Compiling cheer modules... [OK]");
+      await typeLine("Sealing channel... [OK]");
+      await typeLine("Writing gift ledger... [OK]");
+      fadeToClosed("> SESSION CLOSED ");
+    }
+
+    matrixRain();
+    runScript();
+  </script>
+</body>
+</html>
