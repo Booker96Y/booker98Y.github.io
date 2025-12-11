@@ -93,7 +93,7 @@
 <body>
   <div class="screen" id="screen">
     <canvas id="matrix"></canvas>
-    <div class="title">[ ACCESS PORT : COM-TERM v5.9 ]</div>
+    <div class="title">[ ACCESS PORT : COM-TERM v7.9 ]</div>
     <div class="bar"></div>
     <div id="output" aria-live="polite"></div>
     <div id="inputs"></div>
@@ -273,7 +273,7 @@ Fijne feestdagen! 🎄`;
       await typeLine("Goedgekeurd.");
 
       // CODE
-      await typeLine("Voer de geheime code in die bij je cadeau hoort.");
+      await typeLine("Voer de geheime code in die bij je hint hoort.");
       let attempts = 0, MAX_ATTEMPTS = 3;
       while (true) {
         const code = await askInput({ id: "code", label: "code", type: "password", placeholder: "****", button: "Valideer" });
@@ -351,12 +351,14 @@ Fijne feestdagen! 🎄`;
     // ===============
     function asciiBanner() {
       return [
-        "  ____  _     _     _                 _           _ ",
-        " / ___|| |__ (_)___| |__   ___   ___ | | __ _  __| |",
-        " \\___ \\| '_ \\| / __| '_ \\ / _ \\ / _ \\| |/ _` |/ _` |",
-        "  ___) | | | | \\__ \\ | | | (_) | (_) | | (_| | (_| |",
-        " |____/|_| |_|_|___/_| |_|\\___/ \\___/|_|\\__,_|\\__,_|",
-        ""
+        "              *",
+        "             /.\",
+        "            /..'\",
+        "            /'.'\",
+        "           /.''.'\",
+        "           /.'.'.\",
+        "    ....../'.''.'.\.........",
+        "          ^^^[_]^^^",
       ].join("\n");
     }
 
@@ -487,4 +489,5 @@ Fijne feestdagen! 🎄`;
   </script>
 </body>
 </html>
+
 
